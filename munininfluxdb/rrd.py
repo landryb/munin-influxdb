@@ -84,8 +84,8 @@ def export_to_xml(settings):
 
         if _field.rrd_found:
             progress_bar.update()
-
-            code = subprocess.check_call(['rrdtool', 'dump', _field.rrd_filename, _field.xml_filename])
+            f = open (_field.xml_filename, 'w')
+            code = subprocess.check_call(['rrdtool', 'dump', _field.rrd_filename], stdout=f)
             if code == 0:
                 _field.rrd_exported = True
 
