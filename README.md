@@ -3,7 +3,7 @@ Munin-influxdb
 
 [Munin](http://munin-monitoring.org/) to [InfluxDB](http://influxdb.com)+[Grafana](http://grafana.org/) gateway
 
-Tool to migrate smoothly from Munin (RRD) to InfluxDB and Grafana dashboards.
+Tool to migrate smoothly from Collectd (RRD) to InfluxDB and Grafana dashboards.
 
 Provide two commands:
 
@@ -57,7 +57,7 @@ Installation & Usage
 3. Run ```import``` command: 
 
   ```
-  $ sudo ./muninflux import
+  ./bin/import.py --no-group-fields --no-grafana --no-interactive -c user:pass@influxdb_server:8086/db/collectd
   ```
   
 4. A cron job will be automatically added after installation to refresh data from munin every 5 minutes (Munin default)
