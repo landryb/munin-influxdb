@@ -29,7 +29,7 @@ def retrieve_munin_configuration(settings):
         print("  {0} Found {1}: extracted {2} measurement units".format(Symbol.OK_GREEN, settings.paths['datafile'],
                                                                         settings.nb_fields))
 
-    settings = rrd.discover_from_rrd(settings, insert_missing=False)
+    settings = rrd.discover_from_rrd(settings, insert_missing=False, print_missing=False)
     # for each host, find the /var/lib/munin/<host> directory and check if node name and plugin conf match RRD files
     try:
         rrd.check_rrd_files(settings)
