@@ -238,7 +238,6 @@ class InfluxdbClient:
                 _plugin = self.settings.domains[domain].hosts[host].plugins[plugin]
                 measurement = plugin
                 tags = {
-                    "domain": domain,
                     "host": host,
                     "plugin": plugin
                 }
@@ -294,27 +293,37 @@ class InfluxdbClient:
                 _field = self.settings.domains[domain].hosts[host].plugins[plugin].fields[field]
                 if not _field.rrd_exported:
                     continue
-                measurement = field
+                s = _field.settings
                 tags = {
-                    "domain": domain,
                     "host": host,
-                    "plugin": plugin
+                    "type": s["field_type"]
                 }
-                field_names = ['time', 'value']
-                values = defaultdict(list)
-                values_with_time = []
 
-                _field.influxdb_measurement = measurement
-                _field.influxdb_field = 'value'
+                if s["plugin_instance"]:
+                    tags["instance"] = s["plugin_instance"]
+                if s["field_instance"]:
+                    tags["type_instance"] = s["field_instance"]
 
                 content = read_xml_file(_field.xml_filename)
-                [values[key].append(value) for key, value in content.items()]
-                _field.xml_imported = True
-                progress_bar.update()
+                for dsname, dsvalues in content.items():
+#                for dsname in s["ds_names"]:
+#                    dsvalues = content[dsname]
+#                    print ("reading measturement {} with {} values, type {} type instance {} in ds {} in {}".format(measurement, len(dsvalues.keys()), s["field_type"], s["field_instance"], dsname, _field.xml_filename))
 
-                # join data with time as first column
-                values_with_time.extend([[k]+v for k, v in values.items()])
-                _upload_and_validate(measurement, tags, field_names, values_with_time)
+                    measurement = s["plugin_type"] + '_' + dsname
+                    field_names = ['time', 'value']
+                    values = defaultdict(list)
+                    values_with_time = []
+
+                    _field.influxdb_field = 'value'
+                    _field.influxdb_measurement = measurement
+                    [values[key].append(value) for key, value in dsvalues.items()]
+                    _field.xml_imported = True
+
+                    # join data with time as first column
+                    values_with_time.extend([[k]+v for k, v in values.items()])
+                    _upload_and_validate(measurement, tags, field_names, values_with_time)
+                progress_bar.update()
 
         for error in errors:
             print("  {} {}".format(error[0], error[1]))
