@@ -3,6 +3,7 @@ import os
 import errno
 import subprocess
 import math
+import re
 from collections import defaultdict
 import xml.etree.ElementTree as ET
 from settings import Settings, Defaults
@@ -137,52 +138,63 @@ def discover_from_rrd(settings, insert_missing=True, print_missing=False):
 
     not_inserted = defaultdict(dict)
 
-    for domain in os.listdir(folder):
-        if not os.path.isdir(os.path.join(folder, domain)):
+    """
+    /var/db/rrd/<host>/<plugin_type>-<plugin_instance>/<field_type>-<field_instance>.rrd
+    /var/db/rrd/bonneville.craig.fr/interface-eth0/if_errors.rrd
+    /var/db/rrd/bonneville.craig.fr/tcpconns-80-local/tcp_connections-ESTABLISHED.rrd
+->  tcpconns_value,host=furka.craig.fr,instance=22-local,type=tcp_connections,type_instance=ESTABLISHED
+    """
+    domain = 'rrd'
+    for host in os.listdir(folder):
+        if host == 'journal':
+            continue
+        if not os.path.isdir(os.path.join(folder, host)):
             #domains are represented as folders
             continue
 
-        if not insert_missing and not domain in settings.domains:
-            #skip unknown domains (probably no longer wanted)
-            continue
+        for plugin in os.listdir(os.path.join(folder, host)):
 
-        files = os.listdir(os.path.join(folder, domain))
-        progress_bar = ProgressBar(len(files), title=domain)
-        for filename in files:
-            progress_bar.update()
+            os.makedirs(os.path.join(settings.paths['xml'], host, plugin))
+            files = os.listdir(os.path.join(folder, host, plugin))
 
-            path = os.path.join(folder, domain, filename)
-            if os.path.isdir(path) or not path.endswith(".rrd"):
-                # not a RRD database
-                continue
-
-            parts = os.path.splitext(filename)[0].split('-')
-            length = len(parts)
-
-            if length < 4:
-                print("Error:", filename, parts, length)
-                continue
-
-            host, plugin, field, datatype = parts[0], ".".join(parts[1:-2]), parts[-2], parts[-1]
-
-            if not insert_missing and (not host in settings.domains[domain].hosts or not plugin in settings.domains[domain].hosts[host].plugins):
-                if not host in not_inserted[domain]:
-                    not_inserted[domain][host] = set()
-                not_inserted[domain][host].add(plugin)
-                continue
-
-            plugin_data = settings.domains[domain].hosts[host].plugins[plugin]
-            try:
-                assert os.path.exists(os.path.join(folder, domain, "{0}-{1}-{2}-{3}.rrd".format(host, plugin.replace(".", "-"), field, datatype[0])))
-            except AssertionError:
-                print("{0} != {1}-{2}-{3}-{4}.rrd".format(filename, host, plugin, field, datatype[0]))
-                plugin_data.fields[field].rrd_found = False
+            parts = plugin.split('-')
+            if len(parts) > 2:
+                plugin_type = parts[0]
+                plugin_instance = plugin[1+plugin.find('-'):]
+            elif len(parts) == 2:
+                plugin_type = parts[0]
+                plugin_instance = parts[1]
             else:
+                plugin_type = plugin
+                plugin_instance = None
+
+            progress_bar = ProgressBar(len(files), title=host)
+            for filename in files:
+                progress_bar.update()
+
+                path = os.path.join(folder, host, plugin, filename)
+                if os.path.isdir(path) or not path.endswith(".rrd"):
+                    # not a RRD database
+                    continue
+
+                field = os.path.splitext(filename)[0]
+                parts = field.split('-')
+                if len(parts) > 1:
+                   field_type = parts[0]
+                   field_instance = parts[1]
+                else:
+                   field_type = field
+                   field_instance = None
+
+                plugin_data = settings.domains[domain].hosts[host].plugins[plugin]
                 plugin_data.fields[field].rrd_found = True
-                plugin_data.fields[field].rrd_filename = os.path.join(settings.paths['munin'], domain, filename)
-                plugin_data.fields[field].xml_filename = os.path.join(settings.paths['xml'], domain, filename.replace(".rrd", ".xml"))
+                plugin_data.fields[field].rrd_filename = path
+                plugin_data.fields[field].xml_filename = os.path.join(settings.paths['xml'], host, plugin, filename.replace(".rrd", ".xml"))
                 plugin_data.fields[field].settings = {
-                    "type": DATA_TYPES[datatype]
+                    "plugin_type": plugin_type,
+                    "plugin_instance": plugin_instance,
+                    "field_instance": field_instance,
+                    "field_type": field_type
                 }
                 settings.nb_fields += 1
 
