@@ -26,9 +26,11 @@ def read_xml_file(filename, keep_average_only=True, keep_null_values=True):
 
     last_update = int(root.find('lastupdate').text)
     step = int(root.find('step').text)
-
-    if len(root.findall('ds')) > 1:
-        print("  {0} Found more than one datasource in {1} which is not expected. Please report problem.".format(Symbol.NOK_RED, filename))
+    ds_list = []
+    for ds in root.findall('ds/name'):
+        dsn = ds.text.strip()
+        values[dsn] = defaultdict(dict)
+        ds_list.append(dsn)
 
     for rra in root.findall('rra'):
         if keep_average_only and rra.find('cf').text.strip() != "AVERAGE":
@@ -46,21 +48,24 @@ def read_xml_file(filename, keep_average_only=True, keep_null_values=True):
         #                                                                                        nb_entries,
         #                                                                                        entry_delta))
 
-        # there should be only onv <v> entry per row, at least didn't see other cases with Munin
-        for v in rra.findall("./database/row/v"):
-            try:
-                value = float(v.text)
-                if math.isnan(value) and keep_null_values:
-                    value = None
-                # we don't want to override existing values as they are 'fresher' and less likely to be averaged (CF'd)
-                if not entry_date in values:
-                    values[entry_date] = value
+        for r in rra.findall("./database/row"):
+            n = 0
+            for v in r.findall("./v"):
+                cur_ds = ds_list[n]
+                n = n + 1
+                try:
 
-            except:
-                value = None
+                    value = float(v.text)
+                    if math.isnan(value) and keep_null_values:
+                        value = None
+                    # we don't want to override existing values as they are 'fresher' and less likely to be averaged (CF'd)
+                    if not entry_date in values[cur_ds]:
+                        values[cur_ds][entry_date] = value
+
+                except:
+                    value = None
 
             entry_date += entry_delta
-
     return values
 
 
