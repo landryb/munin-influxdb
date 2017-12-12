@@ -59,8 +59,8 @@ class Domain:
         return pprint.pformat(dict(self.hosts))
 
 class Defaults:
-    MUNIN_RRD_FOLDER = "/var/lib/munin"
-    MUNIN_VAR_FOLDER = "/var/lib/munin"
+    MUNIN_RRD_FOLDER = "/var/db/rrd"
+    MUNIN_VAR_FOLDER = "/var/db/rrd"
     MUNIN_WWW_FOLDER = "/var/cache/munin/www"
     MUNIN_DATAFILE = "/var/lib/munin/datafile"
 
