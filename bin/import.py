@@ -18,7 +18,7 @@ def retrieve_munin_configuration(settings):
     print("Exploring Munin structure")
 
     try:
-        settings = munin.discover_from_datafile(settings)
+        None
     except Exception as e:
         print("  {0} Could not process datafile ({1}), will read www and RRD cache instead".format(Symbol.NOK_RED, settings.paths['datafile']))
 
@@ -29,6 +29,7 @@ def retrieve_munin_configuration(settings):
         print("  {0} Found {1}: extracted {2} measurement units".format(Symbol.OK_GREEN, settings.paths['datafile'],
                                                                         settings.nb_fields))
 
+    settings = rrd.discover_from_rrd(settings, insert_missing=False)
     # for each host, find the /var/lib/munin/<host> directory and check if node name and plugin conf match RRD files
     try:
         rrd.check_rrd_files(settings)
@@ -69,6 +70,8 @@ def main(args):
     print("{0} Munin data successfully imported to {1}/db/{2}".format(Symbol.OK_GREEN, settings.influxdb['host'],
                                                                       settings.influxdb['database']))
 
+    print("Then we're good! Have a nice day!")
+    exit()
     settings.save_fetch_config()
     print("{0} Configuration for 'munin-influxdb fetch' exported to {1}".format(Symbol.OK_GREEN,
                                                                                 settings.paths['fetch_config']))
